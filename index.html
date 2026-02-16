@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Et År Sammen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #0a0a2e 0%, #16213e 50%, #1a1a3e 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .message-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 2s ease-in;
+        }
+
+        .message {
+            font-size: 2.5rem;
+            color: #ffffff;
+            text-shadow: 
+                0 0 10px rgba(255, 255, 255, 0.8),
+                0 0 20px rgba(255, 200, 100, 0.6),
+                0 0 30px rgba(255, 150, 50, 0.4);
+            line-height: 1.6;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 
+                    0 0 10px rgba(255, 255, 255, 0.8),
+                    0 0 20px rgba(255, 200, 100, 0.6),
+                    0 0 30px rgba(255, 150, 50, 0.4);
+            }
+            to {
+                text-shadow: 
+                    0 0 20px rgba(255, 255, 255, 1),
+                    0 0 30px rgba(255, 200, 100, 0.8),
+                    0 0 40px rgba(255, 150, 50, 0.6);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .message {
+                font-size: 1.5rem;
+            }
+            .message-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fireworks"></canvas>
+    
+    <div class="message-container">
+        <div class="message">
+            Sammen på kontoret i et helt år<br>
+            fyldt med smil, latter og sjove quiz
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('fireworks');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * 8,
+                    y: (Math.random() - 0.5) * 8
+                };
+                this.alpha = 1;
+                this.decay = Math.random() * 0.015 + 0.015;
+                this.gravity = 0.1;
+                this.size = Math.random() * 3 + 2;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.velocity.y += this.gravity;
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= this.decay;
+            }
+        }
+
+        class Firework {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height;
+                this.targetY = Math.random() * (canvas.height * 0.4) + canvas.height * 0.1;
+                this.particles = [];
+                this.exploded = false;
+                this.velocity = -8 - Math.random() * 4;
+                this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+                this.trailParticles = [];
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw trail
+                    this.trailParticles.forEach(particle => {
+                        particle.draw();
+                    });
+                } else {
+                    this.particles.forEach(particle => {
+                        particle.draw();
+                    });
+                }
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.y += this.velocity;
+                    
+                    // Add trail particle
+                    if (Math.random() < 0.3) {
+                        this.trailParticles.push({
+                            x: this.x,
+                            y: this.y,
+                            alpha: 1,
+                            draw() {
+                                ctx.save();
+                                ctx.globalAlpha = this.alpha;
+                                ctx.fillStyle = '#ffdd00';
+                                ctx.beginPath();
+                                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.restore();
+                            }
+                        });
+                    }
+
+                    // Update trail particles
+                    this.trailParticles = this.trailParticles.filter(particle => {
+                        particle.alpha -= 0.05;
+                        return particle.alpha > 0;
+                    });
+
+                    if (this.y <= this.targetY) {
+                        this.explode();
+                    }
+                } else {
+                    this.particles.forEach(particle => {
+                        particle.update();
+                    });
+                    this.particles = this.particles.filter(particle => particle.alpha > 0);
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                const particleCount = 80 + Math.random() * 40;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+
+            isDone() {
+                return this.exploded && this.particles.length === 0;
+            }
+        }
+
+        let fireworks = [];
+        let lastFireworkTime = 0;
+
+        function animate(currentTime) {
+            ctx.fillStyle = 'rgba(10, 10, 46, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Launch new fireworks
+            if (currentTime - lastFireworkTime > 400 + Math.random() * 600) {
+                fireworks.push(new Firework());
+                lastFireworkTime = currentTime;
+            }
+
+            // Update and draw fireworks
+            fireworks = fireworks.filter(firework => {
+                firework.update();
+                firework.draw();
+                return !firework.isDone();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate(0);
+    </script>
+</body>
+</html>
